@@ -1,0 +1,22 @@
+@if (task) {
+  <form name="deleteForm" (ngSubmit)="confirmDelete(task.id!)">
+    <div class="modal-header">
+      <h4 class="modal-title" data-cy="taskDeleteDialogHeading">Translation missing for entity.delete.title</h4>
+    </div>
+
+    <div class="modal-body">
+      <jhi-alert-error />
+      <p id="jhi-delete-task-heading">Tem certeza de que deseja excluir Task {{ task.id }}?</p>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-dismiss="modal" (click)="cancel()">
+        <fa-icon icon="ban" />&nbsp;<span>Translation missing for entity.action.cancel</span>
+      </button>
+
+      <button id="jhi-confirm-delete-task" data-cy="entityConfirmDeleteButton" type="submit" class="btn btn-danger">
+        <fa-icon icon="times" />&nbsp;<span>Translation missing for entity.action.delete</span>
+      </button>
+    </div>
+  </form>
+}
