@@ -1,0 +1,201 @@
+import { HttpResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
+
+import { Subject, from, of } from 'rxjs';
+
+import { IEmployee } from 'app/entities/employee/employee.model';
+import { EmployeeService } from 'app/entities/employee/service/employee.service';
+import { TaskService } from 'app/entities/task/service/task.service';
+import { ITask } from 'app/entities/task/task.model';
+import { IJob } from '../job.model';
+import { JobService } from '../service/job.service';
+
+import { JobFormService } from './job-form.service';
+import { JobUpdate } from './job-update';
+
+describe('Job Management Update Component', () => {
+  let comp: JobUpdate;
+  let fixture: ComponentFixture<JobUpdate>;
+  let activatedRoute: ActivatedRoute;
+  let jobFormService: JobFormService;
+  let jobService: JobService;
+  let taskService: TaskService;
+  let employeeService: EmployeeService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            params: from([{}]),
+          },
+        },
+      ],
+    });
+
+    fixture = TestBed.createComponent(JobUpdate);
+    activatedRoute = TestBed.inject(ActivatedRoute);
+    jobFormService = TestBed.inject(JobFormService);
+    jobService = TestBed.inject(JobService);
+    taskService = TestBed.inject(TaskService);
+    employeeService = TestBed.inject(EmployeeService);
+
+    comp = fixture.componentInstance;
+  });
+
+  describe('ngOnInit', () => {
+    it('should call Task query and add missing value', () => {
+      const job: IJob = { id: 29383 };
+      const tasks: ITask[] = [{ id: 25192 }];
+      job.tasks = tasks;
+
+      const taskCollection: ITask[] = [{ id: 25192 }];
+      jest.spyOn(taskService, 'query').mockReturnValue(of(new HttpResponse({ body: taskCollection })));
+      const additionalTasks = [...tasks];
+      const expectedCollection: ITask[] = [...additionalTasks, ...taskCollection];
+      jest.spyOn(taskService, 'addTaskToCollectionIfMissing').mockReturnValue(expectedCollection);
+
+      activatedRoute.data = of({ job });
+      comp.ngOnInit();
+
+      expect(taskService.query).toHaveBeenCalled();
+      expect(taskService.addTaskToCollectionIfMissing).toHaveBeenCalledWith(
+        taskCollection,
+        ...additionalTasks.map(i => expect.objectContaining(i) as typeof i),
+      );
+      expect(comp.tasksSharedCollection()).toEqual(expectedCollection);
+    });
+
+    it('should call Employee query and add missing value', () => {
+      const job: IJob = { id: 29383 };
+      const employee: IEmployee = { id: 1749 };
+      job.employee = employee;
+
+      const employeeCollection: IEmployee[] = [{ id: 1749 }];
+      jest.spyOn(employeeService, 'query').mockReturnValue(of(new HttpResponse({ body: employeeCollection })));
+      const additionalEmployees = [employee];
+      const expectedCollection: IEmployee[] = [...additionalEmployees, ...employeeCollection];
+      jest.spyOn(employeeService, 'addEmployeeToCollectionIfMissing').mockReturnValue(expectedCollection);
+
+      activatedRoute.data = of({ job });
+      comp.ngOnInit();
+
+      expect(employeeService.query).toHaveBeenCalled();
+      expect(employeeService.addEmployeeToCollectionIfMissing).toHaveBeenCalledWith(
+        employeeCollection,
+        ...additionalEmployees.map(i => expect.objectContaining(i) as typeof i),
+      );
+      expect(comp.employeesSharedCollection()).toEqual(expectedCollection);
+    });
+
+    it('should update editForm', () => {
+      const job: IJob = { id: 29383 };
+      const task: ITask = { id: 25192 };
+      job.tasks = [task];
+      const employee: IEmployee = { id: 1749 };
+      job.employee = employee;
+
+      activatedRoute.data = of({ job });
+      comp.ngOnInit();
+
+      expect(comp.tasksSharedCollection()).toContainEqual(task);
+      expect(comp.employeesSharedCollection()).toContainEqual(employee);
+      expect(comp.job).toEqual(job);
+    });
+  });
+
+  describe('save', () => {
+    it('should call update service on save for existing entity', () => {
+      // GIVEN
+      const saveSubject = new Subject<HttpResponse<IJob>>();
+      const job = { id: 30796 };
+      jest.spyOn(jobFormService, 'getJob').mockReturnValue(job);
+      jest.spyOn(jobService, 'update').mockReturnValue(saveSubject);
+      jest.spyOn(comp, 'previousState');
+      activatedRoute.data = of({ job });
+      comp.ngOnInit();
+
+      // WHEN
+      comp.save();
+      expect(comp.isSaving).toEqual(true);
+      saveSubject.next(new HttpResponse({ body: job }));
+      saveSubject.complete();
+
+      // THEN
+      expect(jobFormService.getJob).toHaveBeenCalled();
+      expect(comp.previousState).toHaveBeenCalled();
+      expect(jobService.update).toHaveBeenCalledWith(expect.objectContaining(job));
+      expect(comp.isSaving).toEqual(false);
+    });
+
+    it('should call create service on save for new entity', () => {
+      // GIVEN
+      const saveSubject = new Subject<HttpResponse<IJob>>();
+      const job = { id: 30796 };
+      jest.spyOn(jobFormService, 'getJob').mockReturnValue({ id: null });
+      jest.spyOn(jobService, 'create').mockReturnValue(saveSubject);
+      jest.spyOn(comp, 'previousState');
+      activatedRoute.data = of({ job: null });
+      comp.ngOnInit();
+
+      // WHEN
+      comp.save();
+      expect(comp.isSaving).toEqual(true);
+      saveSubject.next(new HttpResponse({ body: job }));
+      saveSubject.complete();
+
+      // THEN
+      expect(jobFormService.getJob).toHaveBeenCalled();
+      expect(jobService.create).toHaveBeenCalled();
+      expect(comp.isSaving).toEqual(false);
+      expect(comp.previousState).toHaveBeenCalled();
+    });
+
+    it('should set isSaving to false on error', () => {
+      // GIVEN
+      const saveSubject = new Subject<HttpResponse<IJob>>();
+      const job = { id: 30796 };
+      jest.spyOn(jobService, 'update').mockReturnValue(saveSubject);
+      jest.spyOn(comp, 'previousState');
+      activatedRoute.data = of({ job });
+      comp.ngOnInit();
+
+      // WHEN
+      comp.save();
+      expect(comp.isSaving).toEqual(true);
+      saveSubject.error('This is an error!');
+
+      // THEN
+      expect(jobService.update).toHaveBeenCalled();
+      expect(comp.isSaving).toEqual(false);
+      expect(comp.previousState).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Compare relationships', () => {
+    describe('compareTask', () => {
+      it('should forward to taskService', () => {
+        const entity = { id: 25192 };
+        const entity2 = { id: 22244 };
+        jest.spyOn(taskService, 'compareTask');
+        comp.compareTask(entity, entity2);
+        expect(taskService.compareTask).toHaveBeenCalledWith(entity, entity2);
+      });
+    });
+
+    describe('compareEmployee', () => {
+      it('should forward to employeeService', () => {
+        const entity = { id: 1749 };
+        const entity2 = { id: 1545 };
+        jest.spyOn(employeeService, 'compareEmployee');
+        comp.compareEmployee(entity, entity2);
+        expect(employeeService.compareEmployee).toHaveBeenCalledWith(entity, entity2);
+      });
+    });
+  });
+});

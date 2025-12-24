@@ -1,0 +1,34 @@
+<div class="d-flex justify-content-center">
+  <div class="col-8">
+    @if (region(); as regionRef) {
+      <div>
+        <h2 data-cy="regionDetailsHeading"><span>Region</span></h2>
+
+        <hr />
+
+        <jhi-alert-error />
+
+        <jhi-alert />
+
+        <dl class="row-md jh-entity-details">
+          <dt><span>Translation missing for global.field.id</span></dt>
+          <dd>
+            <span>{{ regionRef.id }}</span>
+          </dd>
+          <dt><span>Region Name</span></dt>
+          <dd>
+            <span>{{ regionRef.regionName }}</span>
+          </dd>
+        </dl>
+
+        <button type="submit" (click)="previousState()" class="btn btn-info" data-cy="entityDetailsBackButton">
+          <fa-icon icon="arrow-left" />&nbsp;<span>Translation missing for entity.action.back</span>
+        </button>
+
+        <button type="button" [routerLink]="['/region', regionRef.id, 'edit']" class="btn btn-primary">
+          <fa-icon icon="pencil-alt" />&nbsp;<span>Translation missing for entity.action.edit</span>
+        </button>
+      </div>
+    }
+  </div>
+</div>
